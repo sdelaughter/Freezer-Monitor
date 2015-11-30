@@ -13,4 +13,6 @@ In the event of a status change in the freezer, it will send an alert message to
 
 In the event that the CSV file is unreadable or the designated email is unreachable, an alert will be sent to a backup email address which is set near the top of the script.  Make sure to modify this value before deploying as well.
 
-By default, the script reads on Raspberry Pi GPIO pin #11
+By default, the script watches GPIO pin #11 (using board-numbering for a Raspberry Pi model B+)
+
+A circuit diagram is also included to show how to physically connect the Raspberry Pi to the freezer.

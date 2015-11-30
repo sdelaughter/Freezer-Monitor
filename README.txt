@@ -15,4 +15,4 @@ In the event that the CSV file is unreadable or the designated email is unreacha
 
 By default, the script watches GPIO pin #11 (using board-numbering for a Raspberry Pi model B+)
 
-A circuit diagram is also included to show how to physically connect the Raspberry Pi to the freezer.
+Circuit-Diagram.jpg illustrates how to physically connect the Raspberry Pi to the freezer.  You may need to experiment with different resistors in the 1kΩ - 10kΩ range for the +3.3v pin in order to tune the device to suit your freezer's monitoring contact.

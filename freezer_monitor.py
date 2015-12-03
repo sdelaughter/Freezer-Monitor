@@ -10,18 +10,18 @@ If a warning or all-clear message fails to send, a backup message will be sent t
 
 Contact information is read from a CSV file which can be identical on all Raspberry Pis.
 The Pi's local IP address is used as the key to lookup other values in the CSV file.
-The first row of the CSV file must contain the following four column headers:
-	IP,Location,Department,Email
+The first row of the CSV file must contain the following six column headers (and may contain any others you'd like to include):
+	IP,Location,Email,Backup Email,Reply-To Email,From Email
 NOTE: Capitalization must be identical but order is irrelevant.  There should be no spaces on either side.
-	
-If two or more email addresses are associated with a single device, they should be formatted as follows in the CSV:
+
+If two or more email addresses are required for a single freezer's primary or backup contact email, they should be formatted as follows in the CSV:
 	"it@example.edu, jschmoe@example.edu"	
 NOTE: The double quotes above are necessary
 
 Example CSV File:
-	Freezer Number,Department,PI,Email,Location,IP,Hostname,Comments
-	1,Chemistry,Chemistry (backup),minus80-backup@example.edu,BLDG 345,10.12.80.11,minus80-chembackup-1, Backup Minus-80
-	2,Chemistry,Schmoe,"minus80-schmoe@example.edu, it@example.edu",BLDG 456,10.12.80.12,minus80-schmoe-1,
+	Freezer Number,Department,PI,Email,Backup Email,Reply-To Email,From Email,Location,IP,Hostname,Comments
+	1,Chemistry,Chemistry (backup),test-freezer-list@chem.example.edu,it-admins@chem.example.edu,it-helpdesk@chem.example.edu,freezer-monitor@chem.example.edu,BLDG 345,10.12.1.1,minus80-chembackup-1, Backup Minus-80
+	2,Biochemistry,Schmoe,"schmoe@biochem.example.edu, freezer-list@biochem.example.edu",it-admins@biochem.example.edu,it-helpdesk@biochem.example.edu,freezer-monitor@biochem.example.edu,BLDG 456,10.12.1.2,minus80-schmoe-1,
 	
 NOTE: The trailing comma on the third line is necessary for the comment field, which is left blank here.
 
@@ -30,7 +30,7 @@ If any errors are encountered while reading the CSV file, a warning message will
 
 """
 
-__version__ = "1.3.1"
+__version__ = "0.3.2"
 
 import sys
 import time
@@ -52,10 +52,8 @@ from email.mime.text import MIMEText
 
 #Set path for CSV info file
 CSV_PATH = '/usr/local/python/freezer/lib/python2.7/site-packages/freezer_info_dummy.csv'
-
-#Set backup email address
-#MAKE SURE TO CHANGE THIS BEFORE DEPLOYING
-BACKUP_EMAIL = 'it@example.com'
+CSV_ERROR_ADDRESSES={'from': 'freezer_monitor@example.edu', 'to': ['it-admins@example.edu'], 'reply_to': 'it-admins@example.edu'}
+SMTP_SERVER = 'mailhub.it.example.edu'
 
 #Set up logging
 my_logger = logging.getLogger('MyLogger')
@@ -97,7 +95,7 @@ def parse_info(csv_file):
 	return entries
 
 
-def send_mail(status, recipients, location, dept, event_time):
+def send_mail(status, recipients, sender, reply_to, backup, location, event_time):
 	"""Send a warning or all-clear message, depending on the switch status
 	If the message fails to send, send a message to the backup contact
 	If that message fails to send, try the original message again in 5 minutes
@@ -111,12 +109,17 @@ def send_mail(status, recipients, location, dept, event_time):
 	recipients : list
 		A list of strings, one for each email address to contact
 		This is extracted from the CSV file via parse_info() and handle_event()
+	sender : string
+		The from address that the message will appear to be sent from
+		This is extracted from the CSV file via parse_info() and handle_event()
+	reply_to : list
+		A list of strings, one for each email address in the reply-to field
+		This is extracted from the CSV file via parse_info() and handle_event()
+	backup : list
+		A list of strings, one for each email address to contact in case any recipients are not reachable
+		This is extracted from the CSV file via parse_info() and handle_event()
 	location : string
 		The physical location (room number) of the freezer
-		This is extracted from the CSV file via parse_info() and handle_event()
-	dept : 
-		The department which owns the freezer
-		Used to set the reply-to value for the email
 		This is extracted from the CSV file via parse_info() and handle_event()
 	event_time : string
 		The time at which the event was detected
@@ -130,56 +133,50 @@ def send_mail(status, recipients, location, dept, event_time):
 	my_logger.debug('Attempting to send mail to ' + str(recipients))
 		
 	if status == 1:
-		msg = 'A potential problem has been detected with the -80 freezer located in room: ' + str(location)
+		msg = 'A potential problem has been detected with the freezer located in: ' + str(location)
 		msg += '\nThis event was detected at: ' + str(event_time)
 		msg = MIMEText(msg)
-		msg['Subject'] = ('ALERT: Problem with -80 freezer in ' + str(location))
+		msg['Subject'] = ('ALERT: Problem with freezer in ' + str(location))
 	elif status == 0:
-		msg = 'The problem detected with the -80 freezer located in room: ' + str(location) + ' appears to have been resolved.'
+		msg = 'The problem detected with the freezer located in: ' + str(location) + ' appears to have been resolved.'
 		msg += '\nThis resolution was detected at: ' + str(event_time)
 		msg += '\nPlease check this freezer to confirm that it is now working properly.'
 		msg = MIMEText(msg)
-		msg['Subject'] = ('Re: ALERT: Problem with -80 freezer in ' + str(location))
+		msg['Subject'] = ('Re: ALERT: Problem with freezer in ' + str(location))
 		
-	if dept == 'BMB':
-		sender = 'freezer-monitor@biochem.umass.edu'
-		reply_to = 'ithelp@biochem.umass.edu'
-	else:
-		sender = 'freezer-monitor@chem.umass.edu'
-		reply_to = 'ithelp@chem.umass.edu'
 	msg['reply-to'] = reply_to
 	
-	s = smtplib.SMTP('mailhub.oit.umass.edu')
+	s = smtplib.SMTP(SMTP_SERVER)
 	try:
 		s.sendmail(sender, recipients, msg.as_string())
 		my_logger.info('Sent mail to: ' + str(recipients) + '		 For freezer in: ' + str(location))
 	except:
-		my_logger.warning('Failed to send ' + str(msg_type)+ ' message to ' + str(recipients))
+		my_logger.warning('Failed to send ' + str(msg_type) + ' message to ' + str(recipients))
 		try:
 			if status == 1:
-				msg = 'A problem has been detected with a -80 freezer, but the warning message failed to send to the PI\n'
+				msg = 'A problem has been detected with a freezer, but the warning message failed to send\n'
 			elif status == 0:
-				msg = 'A problem with a -80 freezer has been resolved, but the all-clear message failed to send to the PI\n'
+				msg = 'A problem with a -80 freezer has been resolved, but the all-clear message failed to send=\n'
 			msg += '\nFreezer Location: ' + str(location)
 			msg += '\nIntended Recipient(s): ' + str(recipients)
 			msg += '\nTime of Event: ' + str(event_time)
 			msg = MIMEText(msg)
-			msg['Subject'] = ('ALERT: Failed to notify PI about the status of -80 Freezer in ' + str(location))
+			msg['Subject'] = ('ALERT: Failed to send notification about the status of freezer in ' + str(location))
 			msg['reply-to'] = reply_to
-			s.sendmail(sender, [BACKUP_EMAIL], msg.as_string())
-			my_logger.info('Sent message failure warning to ' + str(BACKUP_EMAIL) + ' for freezer in: ' + str(location))
+			s.sendmail(sender, backup, msg.as_string())
+			my_logger.info('Sent message failure warning to ' + str(backup) + ' for freezer in: ' + str(location))
 		except:
 			if status == 1:
-				my_logger.critical('Failed to alert net-l that a warning message failed to send. Trying original message again in 5 minutes.')
+				my_logger.critical('Failed to alert backup contact that a warning message failed to send. Trying original message again in 5 minutes.')
 			if status == 0:
-				my_logger.critical('Failed to alert net-l that an all-clear message failed to send. Trying original message again in 5 minutes.')
+				my_logger.critical('Failed to alert backup contact that an all-clear message failed to send. Trying original message again in 5 minutes.')
 			time.sleep(300)
-			send_mail(status, recipients, location, dept, event_time)
+			send_mail(status, recipients, sender, reply_to, backup, location, event_time)
 
 
 def handle_csv_error(status, ip, event_time):
 	"""Handle any errors encountered while reading the CSV file
-	Send mail to net-l about the CSV error and the freezer event
+	Send mail to backup contact about the CSV error and the freezer event
 	If the message fails to send, wait 15 minutes and try again
 	
 	Parameters
@@ -212,16 +209,19 @@ def handle_csv_error(status, ip, event_time):
 			msg += '\n\nNote that this message indicates the resolution of a potential problem with the freezer connected to this RaspberryPi. Please notify the appropriate lab members to confirm that the freezer is now working properly.'
 		msg = MIMEText(msg)
 		
-		msg['Subject'] = ('Freezer CSV error for RPi at IP' + str(ip))
-		msg['reply-to'] = 'ithelp@chem.umass.edu'
-		sender = 'freezer-monitor@chem.umass.edu'
-		s = smtplib.SMTP('mailhub.oit.umass.edu')
-		s.sendmail(sender, ['net-l@chem.umass.edu'], msg.as_string())
-		my_logger.info('Sent warning to net-l')
+		msg['Subject'] = ('Error reading CSV file on Freezer RPi at IP' + str(ip))
+		msg['reply-to'] = CSV_ERROR_ADDRESSES['reply_to']
+		sender = CSV_ERROR_ADDRESSES['from']
+		recipients = CSV_ERROR_ADDRESSES['to']
+		if type(recipients) == string:
+			recipients = [recipients]
+		s = smtplib.SMTP(SMTP_SERVER)
+		s.sendmail(sender, recipients, msg.as_string())
+		my_logger.info('Sent warning to ' + str(recipeints))
 		sleep(900)
 		handle_event(status)
 	except:
-		my_logger.critical('!!! Failed to read CSV File and failed to alert net-l !!!')
+		my_logger.critical('!!! Failed to read CSV File and failed to alert ' + str(recipients) + ' !!!')
 		sleep(900)
 		handle_event(status)
 
@@ -273,7 +273,10 @@ def handle_event(status):
 			recipients = ((info[i]['Email']).split(', '))
 			location = (info[i]['Location'])
 			department = (info[i]['Department'])
-			send_mail(status, recipients, location, department, event_time)
+			sender = (info[i]['From Email'])
+			reply_to = ((info[i]['Reply-To Email'])
+			backup = ((info[i]['Backup Email']).split(', '))
+			send_mail(status, recipients, sender, reply_to, backup, location, event_time)
 	
 
 def gpio_setup(PIN):

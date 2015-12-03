@@ -1,3 +1,3 @@
 Freezer Number,Department,PI,Email,Backup Email,Reply-To Email,From Email,Location,IP,Hostname,Comments
-1,Chemistry,Chemistry (backup),test-freezer-list@chem.example.edu,it-admins@chem.example.edu,it-helpdesk@chem.example.edu,freezer-monitor@example.edu,BLDG 345,10.12.1.1,minus80-chembackup-1, Backup Minus-80
+1,Chemistry,Chemistry (backup),test-freezer-list@chem.example.edu,it-admins@chem.example.edu,it-helpdesk@chem.example.edu,freezer-monitor@chem.example.edu,BLDG 345,10.12.1.1,minus80-chembackup-1, Backup Minus-80
 2,Biochemistry,Schmoe,"schmoe@biochem.example.edu, freezer-list@biochem.example.edu",it-admins@biochem.example.edu,it-helpdesk@biochem.example.edu,freezer-monitor@biochem.example.edu,BLDG 456,10.12.1.2,minus80-schmoe-1,

@@ -27,10 +27,12 @@ NOTE: The trailing comma on the third line is necessary for the comment field, w
 
 If any errors are encountered while reading the CSV file, a warning message will be sent to the backup email address.
 
+Be sure to set your own values for CSV_PATH, CSV_ERROR_ADDRESSES, and SMTP_SERVER below.
+
 
 """
 
-__version__ = "0.3.2"
+__version__ = "0.4.1"
 
 import sys
 import time
@@ -52,7 +54,12 @@ from email.mime.text import MIMEText
 
 #Set path for CSV info file
 CSV_PATH = '/usr/local/python/freezer/lib/python2.7/site-packages/freezer_info_dummy.csv'
+
+#Set contact info to alert about errors reading the CSV file
+#The 'to' value should be formatted as a list, even for a single address
 CSV_ERROR_ADDRESSES={'from': 'freezer_monitor@example.edu', 'to': ['it-admins@example.edu'], 'reply_to': 'it-admins@example.edu'}
+
+#Set the address for the SMTP server to send messages from
 SMTP_SERVER = 'mailhub.it.example.edu'
 
 #Set up logging

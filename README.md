@@ -27,8 +27,8 @@ BEFORE DEPLOYING
     - CSV_ERROR_ADDRESSES['to'] should be formatted as a list, even for a single address
 2. Modify freezer_info.csv with accurate information for each of your monitoring devices (one device per row)
     - The Pi's IP address is used as the key to lookup other values in the CSV file, so make sure all your Pis have fixed IP addresses
-    - The first row of the CSV file must contain at least the following six column headers (in any order, but formatted identically):
-        IP,Location,Email,Backup Email,Reply-To Email,From Email
+    - The first row of the CSV file must contain at least the following seven column headers (in any order, but formatted identically):
+        IP,Department,Location,Email,Backup Email,Reply-To Email,From Email
     - If two or more email addresses are required for a single freezer's primary or backup contact email, they should be surrounded by double quotes and separated by a comma and a space as follows:
         "it@example.edu, jschmoe@example.edu"
 3. If desired, the alert message's content can be modified in freezer_monitor.send_mail()
